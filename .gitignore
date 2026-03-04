@@ -1,0 +1,11 @@
+**/__pycache__/
+*.egg-info/
+*.egg
+*.json
+.env
+results/**
+dist/**
+build/**
+cluster_out/**
+hle/results/**
+upload_to_hf.py

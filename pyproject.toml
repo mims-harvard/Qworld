@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qworld"
+version = "0.1.1"
+description = "Generate evaluation criteria for any question using LLMs"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [{name = "Yuchang Su"}]
+dependencies = [
+    "pydantic>=2.0",
+    "numpy",
+    "scikit-learn",
+    "tqdm",
+    "openai",
+    "python-dotenv",
+    "anthropic",
+    "google-genai",
+]
+
+[project.optional-dependencies]
+local-embeddings = [
+    "sentence-transformers",
+]
+
+[project.scripts]
+qworld = "qworld.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["qworld*"]
