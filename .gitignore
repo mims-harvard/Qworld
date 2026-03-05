@@ -8,4 +8,4 @@ dist/**
 build/**
 cluster_out/**
 hle/results/**
-upload_to_hf.py
+hf_demo.py

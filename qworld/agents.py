@@ -3,7 +3,6 @@ import json
 import numpy as np
 from typing import List, Dict, Any, Optional, Callable
 from sklearn.metrics.pairwise import cosine_similarity
-from tqdm import tqdm
 
 
 def parse_json(result: Any) -> Any:
@@ -136,25 +135,26 @@ def run_pipeline(
     use_parallel: bool = False,
     max_workers: int = 8,
     verbose: bool = False,
+    log_fn: Optional[Callable] = None,
 ) -> Dict[str, Any]:
     """Run the full criteria generation pipeline."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
     import time
     
-    pipeline_start = time.time()
-    time_mark = time.time()
+    _log_fn = log_fn if log_fn else (print if verbose else None)
     
-    def log(step: str, counts: str):
-        nonlocal time_mark
-        if not verbose:
-            return
-        elapsed = time.time() - time_mark
-        time_mark = time.time()
-        if 'Done' in step:
-            print(f"Total time: {time.time() - pipeline_start:.1f}s")
-        else:
-            print(f"[Pipeline] {step} | {counts} | {elapsed:.1f}s")
-        
+    pipeline_start = time.time()
+    step_start = time.time()
+    
+    def log(msg: str):
+        if _log_fn:
+            _log_fn(msg)
+    
+    def step_elapsed() -> float:
+        nonlocal step_start
+        e = time.time() - step_start
+        step_start = time.time()
+        return e
     
     question = item.get("question")
     prompt_id = item.get("prompt_id", item.get("id", ""))
@@ -162,6 +162,13 @@ def run_pipeline(
     
     if not question:
         return {"prompt_id": prompt_id, "error": "question is required"}
+    
+    q_preview = question[:100] + ('...' if len(question) > 100 else '')
+    log(f"{'=' * 60}")
+    log(f"Pipeline started | model will be called via call_fn")
+    log(f"Question: {q_preview}")
+    log(f"Config: scenario_expands={n_scenario_expands}, perspective_expands={n_perspective_expands}, criteria_expands={n_criteria_expands}, dedup={dedup_threshold}")
+    log(f"{'=' * 60}")
     
     scenarios = list(item.get("scenarios", []))
     raw_perspectives = list(item.get("raw_perspectives", []))
@@ -173,18 +180,25 @@ def run_pipeline(
     after_dedup = 0
     after_review = 0
     
-    def parallel_map(fn, items):
+    def parallel_map(fn, items, label="tasks"):
         """Execute fn on items, parallel if use_parallel else sequential."""
         if not items:
             return []
-        if use_parallel and len(items) > 1:
+        total = len(items)
+        if use_parallel and total > 1:
             results = []
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [executor.submit(fn, item) for item in items]
-                for future in tqdm(as_completed(futures), total=len(futures), disable=not verbose):
+                for i, future in enumerate(as_completed(futures), 1):
                     results.append(future.result())
+                    log(f"    [{label}] {i}/{total} done")
             return results
-        return [fn(item) for item in items]
+        results = []
+        for i, item in enumerate(items, 1):
+            results.append(fn(item))
+            if total > 1:
+                log(f"    [{label}] {i}/{total} done")
+        return results
     
     try:
         new_perspective_ids: List[str] = []
@@ -198,6 +212,9 @@ def run_pipeline(
             
         # Step 1: Generate initial scenarios and perspectives
         if not scenarios:
+            log(f"\n[Step 1/6] Generating initial scenarios and perspectives...")
+            step_elapsed()
+            log(f"  Analyzing question to identify scenarios...")
             initial = generate_scenarios(question, call_fn, image) or []
             for idx, s in enumerate(initial):
                 scenarios.append({
@@ -206,7 +223,10 @@ def run_pipeline(
                     "scenario_description": s["scenario_description"],
                     "expand_iteration": 0,
                 })
-            persp_results = parallel_map(gen_persp_for_scenario, scenarios)
+            scenario_names = ', '.join(s['scenario_name'] for s in scenarios)
+            log(f"  Generated {len(scenarios)} scenarios")
+            log(f"  Generating perspectives for {len(scenarios)} scenarios (parallel={use_parallel})...")
+            persp_results = parallel_map(gen_persp_for_scenario, scenarios, "perspectives")
             for scenario_id, generated in persp_results:
                 for p in generated:
                     raw_perspectives.append({
@@ -214,6 +234,8 @@ def run_pipeline(
                         "perspective_name": p["perspective_name"],
                         "perspective_description": p["perspective_description"],
                     })
+            log(f"  Collected {len(raw_perspectives)} raw perspectives")
+            log(f"  Reviewing and consolidating perspectives...")
             reviewed_all = review_perspectives(question, call_fn, raw_perspectives, image) or []
             for idx, p in enumerate(reviewed_all):
                 reviewed_perspectives.append({
@@ -223,17 +245,20 @@ def run_pipeline(
                     "expand_iteration": 0,
                 })
                 new_perspective_ids.append(f"p{idx}")
-            log("Init scenarios and perspectives generation", f"scenarios={len(scenarios)} perspectives={len(reviewed_perspectives)}")
+            log(f"  Step 1 done ({step_elapsed():.1f}s) | scenarios={len(scenarios)}, perspectives={len(reviewed_perspectives)}")
         
         # Step 2: Expand scenarios
         current = _max_iteration(scenarios, "expand_iteration")
         needed = max(0, n_scenario_expands - current)
         
         if needed > 0:
+            log(f"\n[Step 2/6] Expanding scenarios ({needed} rounds)...")
+            step_elapsed()
             sid_next = len(scenarios)
             new_scenarios = []
             for i in range(needed):
                 iteration = current + 1 + i
+                log(f"  Expansion round {i + 1}/{needed}...")
                 expanded = expand_scenarios(question, call_fn, scenarios, image) or []
                 for s in expanded:
                     new_sc = {
@@ -245,17 +270,23 @@ def run_pipeline(
                     scenarios.append(new_sc)
                     new_scenarios.append(new_sc)
                     sid_next += 1
-            persp_results = parallel_map(gen_persp_for_scenario, new_scenarios)
+                new_names = ', '.join(s['scenario_name'] for s in expanded)
+            log(f"  Generating perspectives for {len(new_scenarios)} new scenarios...")
+            persp_results = parallel_map(gen_persp_for_scenario, new_scenarios, "perspectives")
+            new_persp_count = 0
             for scenario_id, generated in persp_results:
+                new_persp_count += len(generated)
                 for p in generated:
                     raw_perspectives.append({
                         "scenario_id": scenario_id,
                         "perspective_name": p["perspective_name"],
                         "perspective_description": p["perspective_description"],
                     })
+            log(f"  Reviewing all perspectives...")
             reviewed_all = review_perspectives(question, call_fn, raw_perspectives, image) or []
             existing_names = {p["perspective_name"].strip() for p in reviewed_perspectives}
             pid_next = len(reviewed_perspectives)
+            added = 0
             for p in reviewed_all:
                 name = p["perspective_name"].strip()
                 if name and name not in existing_names:
@@ -268,16 +299,22 @@ def run_pipeline(
                     new_perspective_ids.append(f"p{pid_next}")
                     existing_names.add(name)
                     pid_next += 1
-            log(f"Scenario expand x{needed}, generate perspectives for new scenarios", f"scenarios={len(scenarios)} perspectives={len(reviewed_perspectives)}")
+                    added += 1
+            log(f"  Step 2 done ({step_elapsed():.1f}s) | scenarios={len(scenarios)}, perspectives={len(reviewed_perspectives)}")
+        else:
+            log(f"\n[Step 2/6] Scenario expansion skipped (n_scenario_expands={n_scenario_expands})")
         
         # Step 3: Expand perspectives
         current = _max_iteration(reviewed_perspectives, "expand_iteration")
         needed = max(0, n_perspective_expands - current)
         
         if needed > 0:
+            log(f"\n[Step 3/6] Expanding perspectives ({needed} rounds)...")
+            step_elapsed()
             pid_next = len(reviewed_perspectives)
             for i in range(needed):
                 iteration = current + 1 + i
+                log(f"  Expansion round {i + 1}/{needed}...")
                 expanded = expand_perspectives(question, call_fn, reviewed_perspectives, image) or []
                 for p in expanded:
                     reviewed_perspectives.append({
@@ -288,12 +325,17 @@ def run_pipeline(
                     })
                     new_perspective_ids.append(f"p{pid_next}")
                     pid_next += 1
-            log(f"Perspective expand x{needed}", f"perspectives={len(reviewed_perspectives)}")
+            log(f"  Step 3 done ({step_elapsed():.1f}s) | total perspectives={len(reviewed_perspectives)}")
+        else:
+            log(f"\n[Step 3/6] Perspective expansion skipped (n_perspective_expands={n_perspective_expands})")
         
         # Step 4: Generate criteria for new perspectives (parallel if enabled)
         if new_perspective_ids:
+            log(f"\n[Step 4/6] Generating criteria for {len(new_perspective_ids)} perspectives...")
+            step_elapsed()
             new_persps = [p for p in reviewed_perspectives if p["perspective_id"] in new_perspective_ids]
-            criteria_results = parallel_map(gen_criteria_for_persp, new_persps)
+            log(f"  Generating criteria (parallel={use_parallel}, workers={max_workers})...")
+            criteria_results = parallel_map(gen_criteria_for_persp, new_persps, "criteria")
             for perspective_id, generated in criteria_results:
                 for c in generated:
                     raw_criteria.append({
@@ -302,8 +344,11 @@ def run_pipeline(
                         "points": c.get("points", 1),
                     })
             before_dedup = len(raw_criteria)
+            log(f"  Raw criteria collected: {before_dedup}")
+            log(f"  Deduplicating with embedding (threshold={dedup_threshold})...")
             deduped = deduplicate_by_embedding(raw_criteria, embed_fn, dedup_threshold)
             after_dedup = len(deduped)
+            log(f"  Reviewing and consolidating criteria...")
             reviewed_all = review_criteria(question, call_fn, deduped, image) or []
             reviewed_criteria = []
             for idx, c in enumerate(reviewed_all):
@@ -314,16 +359,20 @@ def run_pipeline(
                     "expand_iteration": 0,
                 })
             after_review = len(reviewed_criteria)
-            log("Criteria gen+dedup+review", f"raw={before_dedup} dedup={after_dedup} review={after_review}")
+            log(f"  After review: {after_review} criteria")
+            log(f"  Step 4 done ({step_elapsed():.1f}s) | raw={before_dedup} -> dedup={after_dedup} -> review={after_review}")
         
         # Step 5: Expand criteria
         current = _max_iteration(reviewed_criteria, "expand_iteration")
         needed = max(0, n_criteria_expands - current)
         
         if needed > 0:
+            log(f"\n[Step 5/6] Expanding criteria ({needed} rounds)...")
+            step_elapsed()
             cid_next = len(reviewed_criteria)
             for i in range(needed):
                 iteration = current + 1 + i
+                log(f"  Expansion round {i + 1}/{needed} (current criteria={len(reviewed_criteria)})...")
                 expanded = expand_criteria(question, call_fn, reviewed_criteria, image) or []
                 for c in expanded:
                     reviewed_criteria.append({
@@ -333,13 +382,25 @@ def run_pipeline(
                         "expand_iteration": iteration,
                     })
                     cid_next += 1
-            log(f"Criteria expand x{needed}", f"criteria={len(reviewed_criteria)}")
+            log(f"  Step 5 done ({step_elapsed():.1f}s) | total criteria={len(reviewed_criteria)}")
+        else:
+            log(f"\n[Step 5/6] Criteria expansion skipped (n_criteria_expands={n_criteria_expands})")
         
         # Step 6: Finalize
+        log(f"\n[Step 6/6] Finalizing ({len(reviewed_criteria)} criteria)...")
+        step_elapsed()
+        log(f"  Checking polarity (positive/negative classification)...")
         final = check_polarity(question, call_fn, reviewed_criteria, image)
+        pos_count = sum(1 for c in final if c.get("points", 0) > 0)
+        neg_count = len(final) - pos_count
+        log(f"  Polarity done: {pos_count} positive, {neg_count} negative")
+        log(f"  Assigning final scores...")
         final = assign_scores(question, call_fn, final, image)
-        log("Check polarity + score assignment", f"final={len(final)} criteria")
-        log("Done", "")
+        log(f"  Step 6 done ({step_elapsed():.1f}s)")
+        total_time = time.time() - pipeline_start
+        log(f"\n{'=' * 60}")
+        log(f"Pipeline complete! {len(final)} final criteria in {total_time:.1f}s")
+        log(f"{'=' * 60}")
         return {
             "prompt_id": prompt_id,
             "question": question,

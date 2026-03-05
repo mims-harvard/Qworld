@@ -71,6 +71,8 @@ class CriteriaGenerator:
         self.max_workers = max_workers
         self.max_retries = max_retries
         self.debug = debug
+        self._verbose = False
+        self._log_fn = None
         
         self.provider = self._detect_provider(model)
         self.client = self._init_client(model, base_url, api_key)
@@ -185,11 +187,20 @@ class CriteriaGenerator:
             return data, media_type
         return image, "image/png"
     
+    def _log(self, msg: str):
+        if self._log_fn:
+            self._log_fn(msg)
+        elif self._verbose:
+            print(msg)
+    
     def _call_llm(self, agent_name: str, args: Dict, image: Optional[str] = None) -> Any:
         """Call LLM with structured output and retry logic."""
         prompt = get_prompt(agent_name, **args)
         schema = AGENT_SCHEMAS.get(agent_name)
         self._last_raw_response = None
+        
+        self._log(f"    [LLM] Calling {agent_name} via {self.model}...")
+        call_start = time.time()
         
         for attempt in range(self.max_retries):
             try:
@@ -203,22 +214,24 @@ class CriteriaGenerator:
                 self._last_raw_response = result
                 
                 if self.debug:
-                    print(f"[DEBUG {agent_name}] raw result: {result}")
+                    self._log(f"[DEBUG {agent_name}] raw result: {result}")
                 
                 if result is None:
                     raise ValueError("LLM returned None")
+                
+                elapsed = time.time() - call_start
+                self._log(f"    [LLM] {agent_name} done ({elapsed:.1f}s)")
                 return result
                 
             except Exception as e:
                 if self._is_rate_limit(e):
                     wait = min(60, 5 * (attempt + 1))
-                    print(f"Rate limit hit, waiting {wait}s (attempt {attempt + 1}/{self.max_retries})")
+                    self._log(f"    [LLM] Rate limit hit, waiting {wait}s (attempt {attempt + 1}/{self.max_retries})")
                     time.sleep(wait)
                     continue
-                err_msg = f"[{agent_name}] {e}"
-                print(err_msg)
+                self._log(f"    [LLM] {agent_name} error (attempt {attempt + 1}): {e}")
                 continue
-        raise Exception(f"Max retries ({self.max_retries}) exceeded")
+        raise Exception(f"Max retries ({self.max_retries}) exceeded for {agent_name}")
     
     def _is_rate_limit(self, e: Exception) -> bool:
         err = str(e).lower()
@@ -345,40 +358,67 @@ class CriteriaGenerator:
     def _get_embeddings(self, texts: List[str]) -> np.ndarray:
         provider = getattr(self, '_embed_provider', None)
 
+        self._log(f"    [Embed] Computing embeddings for {len(texts)} texts (provider={provider})...")
+        embed_start = time.time()
+
         if provider == 'local':
-            return self._local_embed_model.encode(texts, convert_to_numpy=True)
+            result = self._local_embed_model.encode(texts, convert_to_numpy=True)
+            self._log(f"    [Embed] Done ({time.time() - embed_start:.1f}s)")
+            return result
 
         if provider == 'openai' and self.embed_client:
-            for attempt in range(self.max_retries):
-                try:
-                    response = self.embed_client.embeddings.create(model=self.embedding_model, input=texts)
-                    return np.array([d.embedding for d in response.data])
-                except Exception as e:
-                    if self._is_rate_limit(e):
-                        time.sleep(5 * (attempt + 1))
-                        continue
-                    raise
-            raise Exception("Embedding failed after max retries")
+            batch_size = 2048
+            all_embeddings = []
+            for batch_start in range(0, len(texts), batch_size):
+                batch = texts[batch_start:batch_start + batch_size]
+                if len(texts) > batch_size:
+                    self._log(f"    [Embed] Batch {batch_start // batch_size + 1}/{(len(texts) - 1) // batch_size + 1} ({len(batch)} texts)...")
+                for attempt in range(self.max_retries):
+                    try:
+                        response = self.embed_client.embeddings.create(model=self.embedding_model, input=batch)
+                        all_embeddings.extend([d.embedding for d in response.data])
+                        break
+                    except Exception as e:
+                        if self._is_rate_limit(e):
+                            wait = 5 * (attempt + 1)
+                            self._log(f"    [Embed] Rate limit, waiting {wait}s...")
+                            time.sleep(wait)
+                            continue
+                        raise
+                else:
+                    raise Exception("Embedding failed after max retries")
+            self._log(f"    [Embed] Done ({time.time() - embed_start:.1f}s)")
+            return np.array(all_embeddings)
 
         if provider == 'google' and self.embed_client:
-            for attempt in range(self.max_retries):
-                try:
-                    result = self.embed_client.models.embed_content(
-                        model=getattr(self, '_embed_model_google', 'text-embedding-004'),
-                        contents=texts,
-                    )
-                    embs = result.embeddings
-                    vectors = [e.values if hasattr(e, 'values') else e for e in embs]
-                    return np.array(vectors)
-                except Exception as e:
-                    if self._is_rate_limit(e):
-                        time.sleep(5 * (attempt + 1))
-                        continue
-                    raise
-            raise Exception("Embedding failed after max retries")
+            batch_size = 100
+            all_vectors = []
+            for batch_start in range(0, len(texts), batch_size):
+                batch = texts[batch_start:batch_start + batch_size]
+                if len(texts) > batch_size:
+                    self._log(f"    [Embed] Batch {batch_start // batch_size + 1}/{(len(texts) - 1) // batch_size + 1} ({len(batch)} texts)...")
+                for attempt in range(self.max_retries):
+                    try:
+                        result = self.embed_client.models.embed_content(
+                            model=getattr(self, '_embed_model_google', 'text-embedding-004'),
+                            contents=batch,
+                        )
+                        embs = result.embeddings
+                        all_vectors.extend([e.values if hasattr(e, 'values') else e for e in embs])
+                        break
+                    except Exception as e:
+                        if self._is_rate_limit(e):
+                            wait = 5 * (attempt + 1)
+                            self._log(f"    [Embed] Rate limit, waiting {wait}s...")
+                            time.sleep(wait)
+                            continue
+                        raise
+                else:
+                    raise Exception("Embedding failed after max retries")
+            self._log(f"    [Embed] Done ({time.time() - embed_start:.1f}s)")
+            return np.array(all_vectors)
 
-        # Fallback: simple hash-based pseudo-embeddings
-        print("Fallback to simple hash-based pseudo-embeddings for deduplication")
+        self._log("    [Embed] Fallback to hash-based pseudo-embeddings")
         return np.array([[hash(t) % 1000 / 1000 for _ in range(384)] for t in texts])
     
     def _preprocess_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
@@ -465,16 +505,18 @@ class CriteriaGenerator:
                 dedup_threshold=self.dedup_threshold,
                 use_parallel=use_parallel,
                 verbose=verbose,
+                log_fn=self._log_fn,
             )
         
         if len(items) == 1:
-            # Single question: use internal parallelism and verbose output
+            self._verbose = True
             result = process_one(items[0], use_parallel=True, verbose=True)
+            self._verbose = False
             if "prompt_id" in result:
                 result["id"] = result.pop("prompt_id")
             return result if single_input else [result]
         
-        # Batch: external parallelism, no internal threading, no verbose
+        self._verbose = False
         results = []
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = {executor.submit(process_one, item, False, False): item for item in items}
