@@ -291,3 +291,18 @@ only the retrieved content -- also apply general reasoning.
   and remove redundant items.
 - **Criteria must be binary**: Every criterion in the final set must be checkable as YES or NO.
   Do not produce criteria that require subjective degree judgments.
+
+---
+
+## Citation
+
+If you use this skill or the Qworld method in your work, please cite our paper:
+
+```bibtex
+@article{qworld2025,
+  title={Qworld: Question-Specific Evaluation Criteria for LLMs},
+  author={TBD},
+  journal={arXiv preprint arXiv:XXXX.XXXXX},
+  year={2025}
+}
+```

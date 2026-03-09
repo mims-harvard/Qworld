@@ -24,6 +24,16 @@ By formulating criteria generation as structured coverage of question-implied ev
 
 ---
 
+## Getting Started
+
+Qworld supports three usage scenarios:
+
+1. **🌐 Try it online** — Want to experience Qworld quickly? Try our interactive demo at [qworld.openscientist.ai](https://qworld.openscientist.ai/#try-it).
+2. **🤖 Agentic systems** — Want to integrate Qworld into your agentic workflow? Check out our [skills](https://github.com/mims-harvard/Qworld/tree/main/skills) for plug-and-play usage.
+3. **📊 Batch generation** — Need to generate criteria for an entire dataset? Install the package and use the Python API below — pass a list of questions and set `max_workers` to parallelize.
+
+---
+
 ## Installation
 
 ```bash
@@ -89,12 +99,6 @@ VLLM_SERVER_URL=http://localhost:8000/v1
 ---
 
 ## Quick Start
-
-Qworld supports three usage scenarios:
-
-1. **🌐 Try it online** — Want to experience Qworld quickly? Try our interactive demo at [qworld.openscientist.ai](https://qworld.openscientist.ai/#try-it).
-2. **🤖 Agentic systems** — Want to integrate Qworld into your agentic workflow? Check out our [skills](https://github.com/mims-harvard/Qworld/tree/main/skills) for plug-and-play usage.
-3. **📊 Batch generation** — Need to generate criteria for an entire dataset? Use the code below — pass a list of questions and set `max_workers` to parallelize.
 
 ```python
 from qworld import CriteriaGenerator
