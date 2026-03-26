@@ -6,7 +6,9 @@
 
 [![Paper](https://img.shields.io/badge/Paper-arXiv%202603.23522-b31b1b?style=for-the-badge&logo=arxiv)](https://arxiv.org/abs/2603.23522)
 [![Website](https://img.shields.io/badge/Website-qworld-blue?style=for-the-badge&logo=googlechrome&logoColor=white)](https://qworld.openscientist.ai/)
+[![Video](https://img.shields.io/badge/Video-Explainer-red?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/ie3IWz49b9U)
 
+[![Demo](https://img.shields.io/badge/Demo-Try%20Qworld-orange?style=for-the-badge&logo=huggingface&logoColor=white)](https://huggingface.co/spaces/suyc21/qworld-demo)
 [![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Dataset-yellow?style=for-the-badge)](https://huggingface.co/datasets/suyc21/qworld)
 [![PyPI](https://img.shields.io/pypi/v/qworld?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/qworld/)
 
