@@ -4,7 +4,7 @@
 
 **Generate rich, multi-dimensional evaluation criteria from any question using LLMs.**
 
-[![Paper](https://img.shields.io/badge/Paper-Coming%20Soon-lightgrey?style=for-the-badge&logo=arxiv)](https://arxiv.org/)
+[![Paper](https://img.shields.io/badge/Paper-arXiv%202603.23522-b31b1b?style=for-the-badge&logo=arxiv)](https://arxiv.org/abs/2603.23522)
 [![Website](https://img.shields.io/badge/Website-qworld-blue?style=for-the-badge&logo=googlechrome&logoColor=white)](https://qworld.openscientist.ai/)
 
 [![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Dataset-yellow?style=for-the-badge)](https://huggingface.co/datasets/suyc21/qworld)

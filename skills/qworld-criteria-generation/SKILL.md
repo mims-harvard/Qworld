@@ -299,10 +299,13 @@ only the retrieved content -- also apply general reasoning.
 If you use this skill or the Qworld method in your work, please cite our paper:
 
 ```bibtex
-@article{qworld2025,
-  title={Qworld: Question-Specific Evaluation Criteria for LLMs},
-  author={TBD},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2025}
+@misc{gao2026qworldquestionspecificevaluationcriteria,
+      title={Qworld: Question-Specific Evaluation Criteria for LLMs},
+      author={Shanghua Gao and Yuchang Su and Pengwei Sui and Curtis Ginder and Marinka Zitnik},
+      year={2026},
+      eprint={2603.23522},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2603.23522},
 }
 ```
