@@ -186,3 +186,19 @@ results = gen.generate([
 ## Data
 
 Raw data and generated criteria (gpt-4.1 with scenario expand ×3, perspective expand ×4, criteria expand ×3) are available on [🤗 HuggingFace](https://huggingface.co/datasets/suyc21/qworld).
+
+---
+
+## Citation
+
+```bibtex
+@misc{gao2026qworldquestionspecificevaluationcriteria,
+      title={Qworld: Question-Specific Evaluation Criteria for LLMs},
+      author={Shanghua Gao and Yuchang Su and Pengwei Sui and Curtis Ginder and Marinka Zitnik},
+      year={2026},
+      eprint={2603.23522},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2603.23522},
+}
+```
