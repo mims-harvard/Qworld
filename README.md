@@ -12,6 +12,9 @@
 [![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Dataset-yellow?style=for-the-badge)](https://huggingface.co/datasets/suyc21/qworld)
 [![PyPI](https://img.shields.io/pypi/v/qworld?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/qworld/)
 
+
+[![Qworld Explainer Video](https://img.youtube.com/vi/ie3IWz49b9U/maxresdefault.jpg)](https://youtu.be/ie3IWz49b9U)
+
 </div>
 
 ## About Qworld
