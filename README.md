@@ -2,7 +2,7 @@
 
 <h1>🌍 Qworld: Question-Specific Evaluation Criteria for LLMs</h1>
 
-**Generate rich, multi-dimensional evaluation criteria from any question using LLMs.**
+**Generate rich, multi-dimensional evaluation criteria from any question.**
 
 [![Paper](https://img.shields.io/badge/Paper-arXiv%202603.23522-b31b1b?style=for-the-badge&logo=arxiv)](https://arxiv.org/abs/2603.23522)
 [![Website](https://img.shields.io/badge/Website-qworld-blue?style=for-the-badge&logo=googlechrome&logoColor=white)](https://qworld.openscientist.ai/)
