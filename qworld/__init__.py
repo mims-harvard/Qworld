@@ -11,4 +11,10 @@ Usage:
 from .client import CriteriaGenerator
 
 __all__ = ["CriteriaGenerator"]
-__version__ = "0.1.1"
+
+try:
+    from importlib.metadata import PackageNotFoundError, version
+
+    __version__ = version("qworld")
+except PackageNotFoundError:
+    __version__ = "0.1.2"
