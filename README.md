@@ -170,6 +170,49 @@ results = gen.generate([
 }
 ```
 
+## CLI Batch and Resume
+
+Qworld can process a JSON file from the command line:
+
+```bash
+python -m qworld \
+  --input questions.json \
+  --output criteria.json \
+  --model gpt-4.1 \
+  --max-workers 8
+```
+
+`questions.json` should contain a list of question objects:
+
+```json
+[
+  {"id": "q1", "question": "What is machine learning?"},
+  {"id": "q2", "question": "How does deep learning work?"}
+]
+```
+
+For long jobs, use `--resume` to skip items that already have
+`final_criteria` in the output file:
+
+```bash
+python -m qworld \
+  --input questions.json \
+  --output criteria.json \
+  --model gpt-4.1 \
+  --max-workers 8 \
+  --resume
+```
+
+Use `--max-examples` for a small smoke test before launching a full batch:
+
+```bash
+python -m qworld \
+  --input questions.json \
+  --output criteria.sample.json \
+  --model gpt-4.1 \
+  --max-examples 2
+```
+
 ---
 
 ## Supported Models
