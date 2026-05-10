@@ -11,6 +11,16 @@ import json
 import os
 
 
+def _normalize_input_data(data):
+    if isinstance(data, str):
+        return [{"id": "0", "question": data}]
+    if isinstance(data, dict):
+        return [data]
+    if isinstance(data, list):
+        return data
+    raise TypeError("input JSON must be a string, object, or array")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate evaluation criteria for questions")
     parser.add_argument("-i", "--input", type=str, required=True, help="Input JSON file")
@@ -30,7 +40,7 @@ def main():
     
     # Load input
     with open(args.input, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+        data = _normalize_input_data(json.load(f))
     
     if args.max_examples:
         data = data[:args.max_examples]
@@ -64,6 +74,8 @@ def main():
     )
     
     results = gen.generate(data)
+    if isinstance(results, dict):
+        results = [results]
     all_results = existing + results
     
     os.makedirs(os.path.dirname(args.output) or '.', exist_ok=True)
