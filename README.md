@@ -192,6 +192,25 @@ results = gen.generate([
 
 Raw data and generated criteria (gpt-4.1 with scenario expand ×3, perspective expand ×4, criteria expand ×3) are available on [🤗 HuggingFace](https://huggingface.co/datasets/suyc21/qworld).
 
+### Reproduction Defaults
+
+The released generated criteria use the same expansion depths as the package
+defaults:
+
+| Setting | Value |
+| --- | --- |
+| Criteria generation model | `gpt-4.1` |
+| Temperature | `0.4` |
+| Scenario expansion rounds | `3` |
+| Perspective expansion rounds | `4` |
+| Criteria expansion rounds | `3` |
+| Embedding model | `text-embedding-3-small` |
+| Deduplication threshold | `0.7` |
+| Max retries | `5` |
+
+`max_workers` controls local parallelism for batch processing and does not
+change the generated criteria for an individual question.
+
 ---
 
 ## Citation
