@@ -26,18 +26,21 @@ jobs:
           cache: pip
 
       - name: Install package
-        run: python -m pip install -e .
+        run: python -m pip install -e . pytest ruff
 
       - name: Check package metadata
         run: python -m pip check
 
       - name: Compile package
-        run: python -m compileall qworld
+        run: python -m compileall -q qworld
+
+      - name: Lint Python sources
+        run: ruff check qworld tests --select E9,F63,F7,F82
 
       - name: Run unit tests
         run: |
           if [ -d tests ]; then
-            python -m unittest discover -s tests -v
+            python -m pytest tests -q
           else
-            echo "No tests directory found; skipping unittest discovery."
+            echo "No tests directory found; skipping pytest discovery."
           fi
