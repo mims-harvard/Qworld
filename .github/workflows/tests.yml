@@ -35,7 +35,12 @@ jobs:
         run: python -m compileall -q qworld
 
       - name: Lint Python sources
-        run: ruff check qworld tests --select E9,F63,F7,F82
+        run: |
+          if [ -d tests ]; then
+            ruff check qworld tests --select E9,F63,F7,F82
+          else
+            ruff check qworld --select E9,F63,F7,F82
+          fi
 
       - name: Run unit tests
         run: |
