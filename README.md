@@ -170,6 +170,17 @@ results = gen.generate([
 }
 ```
 
+### CLI JSONL Batches
+
+The `qworld` command accepts either JSON arrays or newline-delimited JSON. JSONL
+is useful for large batches because each line is one independent question:
+
+```bash
+qworld -i questions.jsonl -o criteria.jsonl --input-format jsonl --output-format jsonl
+```
+
+When `--input-format` is omitted, `.jsonl` files are detected automatically.
+
 ---
 
 ## Supported Models

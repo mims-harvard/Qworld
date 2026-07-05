@@ -11,11 +11,54 @@ import json
 import os
 
 
+def _load_input(path, input_format="auto"):
+    """Load JSON or JSONL input for CLI batch generation."""
+    if input_format == "auto":
+        input_format = "jsonl" if path.endswith(".jsonl") else "json"
+
+    with open(path, "r", encoding="utf-8") as f:
+        if input_format == "jsonl":
+            return [json.loads(line) for line in f if line.strip()]
+        if input_format == "json":
+            return json.load(f)
+
+    raise ValueError(f"Unsupported input format: {input_format}")
+
+
+def _write_output(path, results, output_format="json"):
+    """Write CLI results as JSON or JSONL."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        if output_format == "jsonl":
+            for result in results:
+                f.write(json.dumps(result, ensure_ascii=False) + "\n")
+            return
+        if output_format == "json":
+            json.dump(results, f, ensure_ascii=False, indent=2)
+            return
+
+    raise ValueError(f"Unsupported output format: {output_format}")
+
+
+def _limit_examples(data, max_examples):
+    if max_examples is None:
+        return data
+    if isinstance(data, list):
+        return data[:max_examples]
+    return data if max_examples > 0 else []
+
+
+def _item_count(data):
+    return len(data) if isinstance(data, list) else 1
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate evaluation criteria for questions")
     parser.add_argument("-i", "--input", type=str, required=True, help="Input JSON file")
     parser.add_argument("-o", "--output", type=str, required=True, help="Output JSON file")
     parser.add_argument("-m", "--model", type=str, default="gpt-4o", help="Model name")
+    parser.add_argument("--input-format", choices=["auto", "json", "jsonl"], default="auto")
+    parser.add_argument("--output-format", choices=["json", "jsonl"], default="json")
     parser.add_argument("--base-url", type=str, help="API base URL (for vLLM)")
     parser.add_argument("--api-key", type=str, help="API key (uses env vars if not set)")
     parser.add_argument("--temperature", type=float, default=0.4)
@@ -28,27 +71,26 @@ def main():
     
     args = parser.parse_args()
     
-    # Load input
-    with open(args.input, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    data = _load_input(args.input, args.input_format)
     
-    if args.max_examples:
-        data = data[:args.max_examples]
+    data = _limit_examples(data, args.max_examples)
     
     # Resume: filter already processed
     existing = []
     if args.resume and os.path.exists(args.output):
-        with open(args.output, 'r', encoding='utf-8') as f:
-            existing = json.load(f)
+        existing = _load_input(args.output, args.output_format)
         done_ids = {r.get("id") or r.get("prompt_id") for r in existing if "final_criteria" in r}
-        data = [d for d in data if (d.get("id") or d.get("prompt_id")) not in done_ids]
-        print(f"Resuming: {len(existing)} done, {len(data)} remaining")
+        if isinstance(data, list):
+            data = [d for d in data if (d.get("id") or d.get("prompt_id")) not in done_ids]
+        elif (data.get("id") or data.get("prompt_id")) in done_ids:
+            data = []
+        print(f"Resuming: {len(existing)} done, {_item_count(data) if data else 0} remaining")
     
     if not data:
         print("Nothing to process")
         return
     
-    print(f"Processing {len(data)} items with {args.max_workers} workers")
+    print(f"Processing {_item_count(data)} items with {args.max_workers} workers")
     print(f"Using Model: {args.model}")
     
     from .client import CriteriaGenerator
@@ -66,9 +108,7 @@ def main():
     results = gen.generate(data)
     all_results = existing + results
     
-    os.makedirs(os.path.dirname(args.output) or '.', exist_ok=True)
-    with open(args.output, 'w', encoding='utf-8') as f:
-        json.dump(all_results, f, ensure_ascii=False, indent=2)
+    _write_output(args.output, all_results, args.output_format)
     
     success = sum(1 for r in results if 'error' not in r)
     print(f"Done: {success}/{len(results)} successful. Saved to {args.output}")
