@@ -299,13 +299,12 @@ only the retrieved content -- also apply general reasoning.
 If you use this skill or the Qworld method in your work, please cite our paper:
 
 ```bibtex
-@misc{gao2026qworldquestionspecificevaluationcriteria,
-      title={Qworld: Question-Specific Evaluation Criteria for LLMs},
-      author={Shanghua Gao and Yuchang Su and Pengwei Sui and Curtis Ginder and Marinka Zitnik},
+@inproceedings{su2026qworld,
+      title={Qworld: Question-Specific Evaluation Criteria for {LLM}s},
+      author={Yuchang Su and Shanghua Gao and Pengwei Sui and Curtis R Ginder and Marinka Zitnik},
+      booktitle={Third Conference on Language Modeling},
       year={2026},
-      eprint={2603.23522},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2603.23522},
 }
 ```
+
+<sub>\*Yuchang Su and Shanghua Gao are joint first authors and contributed equally to this work.</sub>

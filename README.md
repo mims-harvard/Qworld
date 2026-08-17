@@ -4,6 +4,7 @@
 
 **Generate rich, multi-dimensional evaluation criteria from any question.**
 
+[![COLM 2026](https://img.shields.io/badge/COLM-2026-6f42c1?style=for-the-badge)](https://colmweb.org/AcceptedPapers.html)
 [![Paper](https://img.shields.io/badge/Paper-arXiv%202603.23522-b31b1b?style=for-the-badge&logo=arxiv)](https://arxiv.org/abs/2603.23522)
 [![Website](https://img.shields.io/badge/Website-qworld-blue?style=for-the-badge&logo=googlechrome&logoColor=white)](https://qworld.openscientist.ai/)
 [![Video](https://img.shields.io/badge/Video-Explainer-red?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/ie3IWz49b9U)
@@ -196,14 +197,15 @@ Raw data and generated criteria (gpt-4.1 with scenario expand ×3, perspective e
 
 ## Citation
 
+Qworld is accepted at **COLM 2026** (Third Conference on Language Modeling).
+
 ```bibtex
-@misc{gao2026qworldquestionspecificevaluationcriteria,
-      title={Qworld: Question-Specific Evaluation Criteria for LLMs},
-      author={Shanghua Gao and Yuchang Su and Pengwei Sui and Curtis Ginder and Marinka Zitnik},
+@inproceedings{su2026qworld,
+      title={Qworld: Question-Specific Evaluation Criteria for {LLM}s},
+      author={Yuchang Su and Shanghua Gao and Pengwei Sui and Curtis R Ginder and Marinka Zitnik},
+      booktitle={Third Conference on Language Modeling},
       year={2026},
-      eprint={2603.23522},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2603.23522},
 }
 ```
+
+<sub>\*Yuchang Su and Shanghua Gao are joint first authors and contributed equally to this work.</sub>
