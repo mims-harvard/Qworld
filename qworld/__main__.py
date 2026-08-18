@@ -11,6 +11,18 @@ import json
 import os
 
 
+def _limit_examples(data, max_examples):
+    if max_examples is None:
+        return data
+    if isinstance(data, list):
+        return data[:max_examples]
+    return data if max_examples > 0 else []
+
+
+def _item_count(data):
+    return len(data) if isinstance(data, list) else 1
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate evaluation criteria for questions")
     parser.add_argument("-i", "--input", type=str, required=True, help="Input JSON file")
@@ -32,8 +44,7 @@ def main():
     with open(args.input, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
-    if args.max_examples:
-        data = data[:args.max_examples]
+    data = _limit_examples(data, args.max_examples)
     
     # Resume: filter already processed
     existing = []
@@ -41,14 +52,17 @@ def main():
         with open(args.output, 'r', encoding='utf-8') as f:
             existing = json.load(f)
         done_ids = {r.get("id") or r.get("prompt_id") for r in existing if "final_criteria" in r}
-        data = [d for d in data if (d.get("id") or d.get("prompt_id")) not in done_ids]
-        print(f"Resuming: {len(existing)} done, {len(data)} remaining")
+        if isinstance(data, list):
+            data = [d for d in data if (d.get("id") or d.get("prompt_id")) not in done_ids]
+        elif (data.get("id") or data.get("prompt_id")) in done_ids:
+            data = []
+        print(f"Resuming: {len(existing)} done, {_item_count(data) if data else 0} remaining")
     
     if not data:
         print("Nothing to process")
         return
     
-    print(f"Processing {len(data)} items with {args.max_workers} workers")
+    print(f"Processing {_item_count(data)} items with {args.max_workers} workers")
     print(f"Using Model: {args.model}")
     
     from .client import CriteriaGenerator
