@@ -479,18 +479,20 @@ class CriteriaGenerator:
             items = [{"id": "0", "question": questions}]
         elif isinstance(questions, dict):
             single_input = True
-            if "id" not in questions:
-                questions["id"] = "0"
-            items = [questions]
+            item = questions.copy()
+            if "id" not in item:
+                item["id"] = "0"
+            items = [item]
         else:
             items = []
             for i, q in enumerate(questions):
                 if isinstance(q, str):
                     items.append({"id": str(i), "question": q})
                 else:
-                    if "id" not in q:
-                        q["id"] = str(i)
-                    items.append(q)
+                    item = q.copy()
+                    if "id" not in item:
+                        item["id"] = str(i)
+                    items.append(item)
         
         # Process single item
         def process_one(item, use_parallel=False, verbose=False):
