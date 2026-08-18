@@ -11,6 +11,32 @@ import json
 import os
 
 
+def normalize_input_data(data):
+    """Normalize CLI JSON input to the list shape expected by batch generation."""
+    if isinstance(data, str):
+        return [{"id": "0", "question": data}]
+
+    if isinstance(data, dict):
+        item = data.copy()
+        item.setdefault("id", "0")
+        return [item]
+
+    if isinstance(data, list):
+        items = []
+        for idx, item in enumerate(data):
+            if isinstance(item, str):
+                items.append({"id": str(idx), "question": item})
+            elif isinstance(item, dict):
+                normalized = item.copy()
+                normalized.setdefault("id", str(idx))
+                items.append(normalized)
+            else:
+                raise ValueError("Input list items must be strings or objects")
+        return items
+
+    raise ValueError("Input JSON must be a string, object, or list")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate evaluation criteria for questions")
     parser.add_argument("-i", "--input", type=str, required=True, help="Input JSON file")
@@ -30,7 +56,7 @@ def main():
     
     # Load input
     with open(args.input, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+        data = normalize_input_data(json.load(f))
     
     if args.max_examples:
         data = data[:args.max_examples]
