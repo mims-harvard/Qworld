@@ -16,6 +16,31 @@ from .prompts import get_prompt
 from .schemas import AGENT_SCHEMAS
 
 
+def normalize_questions(
+    questions: Union[str, Dict[str, Any], List[Union[str, Dict[str, Any]]]]
+) -> tuple[bool, List[Dict[str, Any]]]:
+    """Normalize generate() input without mutating caller-owned objects."""
+    if isinstance(questions, str):
+        return True, [{"id": "0", "question": questions}]
+
+    if isinstance(questions, dict):
+        item = questions.copy()
+        item.setdefault("id", "0")
+        return True, [item]
+
+    items = []
+    for i, q in enumerate(questions):
+        if isinstance(q, str):
+            items.append({"id": str(i), "question": q})
+        elif isinstance(q, dict):
+            item = q.copy()
+            item.setdefault("id", str(i))
+            items.append(item)
+        else:
+            raise TypeError("questions must be a string, dict, or list of strings/dicts")
+    return False, items
+
+
 class CriteriaGenerator:
     """
     Generate evaluation criteria for questions using LLMs.
@@ -472,25 +497,7 @@ class CriteriaGenerator:
                 {"id": "q2", "question": "How does ML work?"},
             ])
         """
-        # Normalize input
-        single_input = False
-        if isinstance(questions, str):
-            single_input = True
-            items = [{"id": "0", "question": questions}]
-        elif isinstance(questions, dict):
-            single_input = True
-            if "id" not in questions:
-                questions["id"] = "0"
-            items = [questions]
-        else:
-            items = []
-            for i, q in enumerate(questions):
-                if isinstance(q, str):
-                    items.append({"id": str(i), "question": q})
-                else:
-                    if "id" not in q:
-                        q["id"] = str(i)
-                    items.append(q)
+        single_input, items = normalize_questions(questions)
         
         # Process single item
         def process_one(item, use_parallel=False, verbose=False):
